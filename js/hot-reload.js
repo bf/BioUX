@@ -20,8 +20,12 @@ const timestampForFilesInDirectory = dir =>
 const reload = () => {
 
     chrome.tabs.query ({ active: true, currentWindow: true }, tabs => {
-
-        if (tabs[0]) { chrome.tabs.reload (tabs[0].id) }
+        if (tabs[0]) {
+            var url = tabs[0].url;
+            if (url && (url.indexOf("ncbi") > -1 || url.indexOf("nmpdr.org") > -1)) {
+                chrome.tabs.reload (tabs[0].id) ;
+            }
+        }
 
         chrome.runtime.reload ()
     })
