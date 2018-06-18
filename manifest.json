@@ -1,0 +1,45 @@
+
+{
+  "author": "Benjamin Flesch",
+  "browser_action": {
+    "default_icon": {
+      "64": "img/icon_64.png"
+    },
+    "default_title": "uBlock Origin",
+    "default_popup": "ui/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.ncbi.nlm.nih.gov/*",
+        "http://rast.nmpdr.org/*"
+      ],
+      "js": [
+        "/js/external/jquery-2.2.2.min.js",
+        "/js/external/d3.v5.min.js",
+        "/js/bioUX.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "64": "img/icon_64.png"
+  },    
+  "content_security_policy": "script-src 'self' https://ajax.googleapis.com; object-src 'self'",
+  "background": { "scripts": ["js/hot-reload.js"] },
+  "manifest_version": 2,
+  "minimum_chrome_version": "45.0",
+  "name": "BioUX",
+  "description": "Time-saving user experience improvements for bioinformatics researchers",
+  "options_page": "ui/dashboard.html",
+  "options_ui": {
+    "page": "ui/options_ui.html"
+  },
+  "permissions": [
+    "contextMenus",
+    "tabs",
+    "webRequest",
+    "<all_urls>"
+  ],
+  "version": "0.1"
+}
