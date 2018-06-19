@@ -175,7 +175,7 @@ if (isNMPDR) {
             var svgSubHeading = svg.append("text")
               .text("∑="+numFormat(sumSubSystemCategories))
               .style("font-size", HEADING_FONT_SIZE)
-              .attr("fill", "#333")
+              .attr("fill", "#555")
               .attr("dy", LABEL_FONT_SIZE)
               .attr("dx", margin.left + svgHeading.node().getBBox().width + 10)
 
@@ -249,7 +249,17 @@ if (isNMPDR) {
               .attr("x", (arr) => x(0) + 1)
               .attr("y", (arr) => y(arr[0]));
             
-            var percentageFormat = d3.format(".0%");
+            var d3PercentageFormat = d3.format(".1%");
+            function percentageFormat(percent) {
+                var strLabel = d3PercentageFormat(percent);
+
+                if (strLabel[0] === "0") {
+                    strLabel = strLabel.substr(1);
+                }
+
+                return strLabel;
+            }
+
             enterSelection.append("text")
               .text((arr) => percentageFormat(arr[1].count / sumSubSystemCategories))
               // .attr("dx", BAR_HEIGHT * 2)
@@ -336,7 +346,7 @@ if (isNMPDR) {
             arrPieData.forEach((d) => arrPieDataSum += d.count);
 
             var pieContainer = g.append("g")
-                .attr("transform", `translate(${BAR_CHART_AREA_WIDTH-0.5*pieWidth-30}, ${BAR_CHART_AREA_HEIGHT-0.5*pieHeight-20})`);
+                .attr("transform", `translate(${BAR_CHART_AREA_WIDTH-0.5*pieWidth-40}, ${BAR_CHART_AREA_HEIGHT-0.5*pieHeight-20})`);
             
             var arrPieCalculationResult = pie(arrPieData);
               var arc = pieContainer.selectAll(".arc")
