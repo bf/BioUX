@@ -99,11 +99,13 @@ if (isNMPDR) {
             var arrValues = arrFilteredEntries.map((arr) => arr[1]);
             
             var margin = {
-                top: 20, 
+                top: 50, 
                 right: 0, 
                 bottom: 30, 
                 left: 50
             };
+                
+            var numFormat = d3.format(",");
 
             var bodyWidth = d.innerWidth();
             
@@ -129,7 +131,14 @@ if (isNMPDR) {
             });
             insertAfterElem.before($svg);
 
-            var svg = d3.select($svg[0]);
+            var svg = d3.select($svg[0])
+                .style("border", "1px solid #5da668")
+                .style("margin-bottom", "10px")
+                .style("margin-top", "10px")
+                .style("padding-top", "20px");
+            
+            // append pattern from https://iros.github.io/patternfills/sample_d3.html
+            $svg.append('<defs> <pattern id="whitecarbon" patternUnits="userSpaceOnUse" width="6" height="6"> <image xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHhtbG5zOnhsaW5rPSdodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rJyB3aWR0aD0nNicgaGVpZ2h0PSc2Jz4KICA8cmVjdCB3aWR0aD0nNicgaGVpZ2h0PSc2JyBmaWxsPScjZWVlZWVlJy8+CiAgPGcgaWQ9J2MnPgogICAgPHJlY3Qgd2lkdGg9JzMnIGhlaWdodD0nMycgZmlsbD0nI2U2ZTZlNicvPgogICAgPHJlY3QgeT0nMScgd2lkdGg9JzMnIGhlaWdodD0nMicgZmlsbD0nI2Q4ZDhkOCcvPgogIDwvZz4KICA8dXNlIHhsaW5rOmhyZWY9JyNjJyB4PSczJyB5PSczJy8+Cjwvc3ZnPg==" x="0" y="0" width="6" height="6"> </image> </pattern> </defs>');
 
             var y = d3.scaleBand()
                 .range([0, BAR_CHART_AREA_HEIGHT])
@@ -140,18 +149,35 @@ if (isNMPDR) {
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
             y.domain(arrKeys);
-            x.domain([0, d3.max(arrValues, (d) => d.count)]).nice();
+            x.domain([0, d3.max(arrValues, (d) => d.count)])
+            // .nice();
 
-            g.append("g")
+            var xAxis = g.append("g")
               .attr("class", "axis axis--x")
               .attr("transform", "translate(0," + (BAR_CHART_AREA_HEIGHT - LABEL_FONT_SIZE)  + ")")
-              .call(d3.axisBottom(x).ticks())
-                .append("text")
-                  // .attr("transform", "rotate(-90)")
-                  .attr("y", 6)
-                  .attr("dy", "0.71em")
-                  .attr("text-anchor", "end")
-                  .text("Frequency")
+              .call(d3.axisBottom(x).ticks());
+              
+            xAxis.selectAll("text")
+              .style("font-size", LABEL_FONT_SIZE)
+              .style("font-family", "verdana, sans-serif")
+              .attr("fill", "#444");
+            xAxis.selectAll("line,path").attr("stroke", "#777")
+            
+            var HEADING_FONT_SIZE = LABEL_FONT_SIZE + 2;
+            var svgHeading = svg.append("text")
+              .text("Subsystem Category Distribution")
+              .style("font-size", HEADING_FONT_SIZE)
+              .style("font-weight", "bold")
+              .attr("dy", LABEL_FONT_SIZE)
+              .attr("dx", margin.left)
+            
+            var sumSubSystemCategories = d3.sum(arrValues, (d) => d.count);
+            var svgSubHeading = svg.append("text")
+              .text("∑="+numFormat(sumSubSystemCategories))
+              .style("font-size", HEADING_FONT_SIZE)
+              .attr("fill", "#333")
+              .attr("dy", LABEL_FONT_SIZE)
+              .attr("dx", margin.left + svgHeading.node().getBBox().width + 10)
 
             var yAxis = g.append("g")
               .attr("class", "axis axis--y")
@@ -166,29 +192,87 @@ if (isNMPDR) {
             yAxis.selectAll("*")
                 .remove();
             
+            var BACKGROUND_COLOR = d3.rgb("#fff");
+
+            function luminance(r, g, b) {
+                var a = [r, g, b].map(function (v) {
+                    v /= 255;
+                    return v <= 0.03928
+                        ? v / 12.92
+                        : Math.pow( (v + 0.055) / 1.055, 2.4 );
+                });
+                return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+            }
+
+            function getContrast(rgb1, rgb2) {
+                return (luminance(rgb1.r, rgb1.g, rgb1.b) + 0.05) / (luminance(rgb2.r, rgb2.g, rgb2.b) + 0.05);
+            }
+
+            var CONTRAST_THRESHOLD = 0.7;
+
+            function getBarColor(hexColor) {
+                var c = d3.rgb(hexColor);
+                // console.log("getBarColor", hexColor,"c", c);
+
+                var contrast = getContrast(c, BACKGROUND_COLOR);
+                // console.log("contrast", contrast);
+                while (contrast > CONTRAST_THRESHOLD) {
+                    // console.log("contrast", contrast, "darken!");
+
+                    c = c.darker();
+                    contrast = getContrast(c, BACKGROUND_COLOR);
+                }
+
+                return "" + c;
+            }
+
             var enterSelection = g.selectAll(".bar")
                 .data(arrFilteredEntries)
                 .enter().append("g")
 
+            var getBarLabelID = (id) => "bar-label" + id;
+
             enterSelection.append("text")
-              .text((arr) => arr[0])
+              .text((arr) => arr[0].replace("and", "&"))
+              .attr("id", (d,i) => getBarLabelID(i))
               .attr("dx", BAR_HEIGHT * 2)
               .attr("text-anchor", "start")
               .style("font-size", LABEL_FONT_SIZE)
               .attr("x", (arr) => x(0) + 1)
               .attr("y", (arr) => y(arr[0]));
-              
+            
             enterSelection.append("text")
-              .text((arr) => arr[1].count)
+              .text((arr) => numFormat(arr[1].count))
               .attr("dx", -2 * BAR_HEIGHT)
-              // .style("opacity", 0.75)
               .attr("text-anchor", "end")
               .style("font-size", LABEL_FONT_SIZE)
               .attr("x", (arr) => x(0) + 1)
               .attr("y", (arr) => y(arr[0]));
+            
+            var percentageFormat = d3.format(".0%");
+            enterSelection.append("text")
+              .text((arr) => percentageFormat(arr[1].count / sumSubSystemCategories))
+              // .attr("dx", BAR_HEIGHT * 2)
+              .attr("text-anchor", "end")
+              .attr("fill", (arr) => getBarColor(arr[1].color))
+              .style("font-size", LABEL_FONT_SIZE)
+              .attr("x", function (arr, i) {
+                    // var label = d3.select($svg.find("#"+getBarLabelID(i))[0]);
+                    // var xPos = x(arr[1].count);
+                    // var labelWidth = label.node().getBBox().width;
+                    // console.log("arr[0]", arr[0], "xPos", xPos, "labelWidth", labelWidth);
+                    // if (labelWidth >  xPos + 40) {
+                        xPos = BAR_CHART_AREA_WIDTH;
+                        // this.attr("text-anchor", "start");
+                    // }
+
+                    return xPos
+                })
+              .attr("y", (arr) => y(arr[0]));
+                
 
             enterSelection.append("rect")
-              .attr("fill", (arr) => arr[1].color)
+              .attr("fill", (arr) => getBarColor(arr[1].color))
               .attr("x", (arr) => x(0) + 1)
               .attr("y", (arr) => y(arr[0]) - LABEL_FONT_SIZE)
               .attr("width", BAR_HEIGHT)
@@ -196,11 +280,108 @@ if (isNMPDR) {
 
             enterSelection.append("rect")
               .attr("class", "bar")
-              .attr("fill", (arr) => arr[1].color)
+              .attr("fill", (arr) => getBarColor(arr[1].color))
               .attr("x", (arr) => x(0) + 1)
               .attr("y", (arr) => y(arr[0]) + PADDING_BEFORE_BAR)
               .attr("width", (arr) =>  x(arr[1].count) - x(0))
               .attr("height", BAR_HEIGHT);
+
+            var pieWidth = BAR_CHART_AREA_WIDTH * 0.5;
+            var pieHeight = pieWidth;
+            var pieRadius = Math.min(pieWidth, pieHeight) / 2;
+
+            var pie = d3.pie()
+                .sort(null)
+                .value(function(d) { return d.count; });
+            
+            var rotateBy = -Math.PI* 1/2;
+
+            var path = d3.arc()
+                .outerRadius(pieRadius - 10)
+                .innerRadius(0)
+                .startAngle((d) => d.startAngle + rotateBy)
+                .endAngle((d) => d.endAngle + rotateBy);
+
+            var label = d3.arc()
+                .outerRadius(pieRadius - 40)
+                .innerRadius(pieRadius - 40)
+                .startAngle((d) => d.startAngle + rotateBy)
+                .endAngle((d) => d.endAngle + rotateBy);
+                
+            var arrPieData = {
+                inSystem: {},
+                notInSystem: {}
+            };
+            
+            d.find("#tooltip_2_bar_0 tr td").each(function () {
+                var arrMatches = $(this).text().trim().match(regExpDataLabels);
+                arrPieData.notInSystem[arrMatches[1]] = parseInt(arrMatches[2]);
+            })
+            d.find("#tooltip_2_bar_1 tr td").each(function () {
+                var arrMatches = $(this).text().trim().match(regExpDataLabels);
+                arrPieData.inSystem[arrMatches[1]] = parseInt(arrMatches[2]);
+            })
+
+            console.log("arrPieData", arrPieData);
+
+            var arrPieData = [{
+                label: "In Subsystem",
+                count: arrPieData.inSystem.total
+            }, {
+                label: "Not in Subsystem",
+                count: arrPieData.notInSystem.total
+            }];
+
+            var arrPieDataSum = 0;
+            arrPieData.forEach((d) => arrPieDataSum += d.count);
+
+            var pieContainer = g.append("g")
+                .attr("transform", `translate(${BAR_CHART_AREA_WIDTH-0.5*pieWidth-30}, ${BAR_CHART_AREA_HEIGHT-0.5*pieHeight-20})`);
+            
+            var arrPieCalculationResult = pie(arrPieData);
+              var arc = pieContainer.selectAll(".arc")
+                .data(arrPieCalculationResult)
+                .enter().append("g")
+                  .attr("class", "arc");
+
+                var arrColors= ["#5da668", "#eeeeee"];
+
+              arc.append("path")
+                  .attr("d", path)
+                  .attr("stroke-width", "5px")
+                  .attr("stroke", "white")
+                  .attr("fill", (d,i) =>  arrColors[i%arrColors.length]);
+            
+            function funcPieLabelFill(d, i) {
+                if (i == 0) {
+                    return "#fff";
+                }
+
+                return "#666";
+            }
+
+            var avgCentroidX = (path.centroid(arrPieCalculationResult[0])[0] + path.centroid(arrPieCalculationResult[1])[0]) / 2
+
+              arc.append("text")
+                  .attr("transform", (d) => {console.log("d", d); return `translate(${avgCentroidX}, ${path.centroid(d)[1]})`})
+                  .attr("fill", funcPieLabelFill)
+                  .attr("font-weight", "bold")
+                  .text((d) => d.data.label);
+
+              arc.append("text")
+                  .attr("transform", (d) => `translate(${avgCentroidX}, ${path.centroid(d)[1]})`)
+                  .attr("text-anchor", "end")
+                  .attr("font-size", "30px")
+                  .attr("fill", funcPieLabelFill)
+                  .attr("dy", "14px")
+                  .attr("dx", "-3px")
+                  .text((d) => Math.round(100 * d.data.count / arrPieDataSum) + "%");
+
+              arc.append("text")
+                    .attr("transform", (d) => `translate(${avgCentroidX}, ${path.centroid(d)[1]})`)
+                  .attr("fill", funcPieLabelFill)
+                  .attr("dy", "14px")
+                  .text((d) => numFormat(d.data.count));
         }
     }
 }
