@@ -370,7 +370,7 @@ if (isNMPDR) {
                 return "#666";
             }
 
-            var avgCentroidX = (path.centroid(arrPieCalculationResult[0])[0] + path.centroid(arrPieCalculationResult[1])[0]) / 2
+            var avgCentroidX = Math.min(path.centroid(arrPieCalculationResult[0])[0], path.centroid(arrPieCalculationResult[1])[0]);
 
               arc.append("text")
                   .attr("transform", (d) => {console.log("d", d); return `translate(${avgCentroidX}, ${path.centroid(d)[1]})`})
